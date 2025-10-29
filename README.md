@@ -40,7 +40,7 @@ You can install `evolvepy` directly from this Git repository.
 To use `evolvepy` as a library in your own project (e.g., a new benchmark or application):
 ```bash
 # Installs the core library
-pip install git+[https://github.com/andrea-00/evolvepy.git@v0.1.0](https://github.com/andrea-00/evolvepy.git@v0.1.0)
+pip install git+https://github.com/andrea-00/evolvepy.git@v0.1.0
 ```
 
 ### For Development (or to run the demo)
@@ -48,7 +48,7 @@ pip install git+[https://github.com/andrea-00/evolvepy.git@v0.1.0](https://githu
 To run the included TSP demo or to contribute to the framework, clone this repository and install it in "editable" mode:
 ```bash
 # 1. Clone the repository
-git clone [https://github.com/andrea-00/evolvepy.git](https://github.com/andrea-00/evolvepy.git)
+git clone https://github.com/andrea-00/evolvepy.git
 cd evolvepy
 
 # 2. Install in "editable" mode
