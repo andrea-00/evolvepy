@@ -1,0 +1,40 @@
+# Byte-compiled files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environments
+venv/
+.venv/
+env/
+.env
+.env.*
+
+# Packaging and build output
+build/
+dist/
+*.egg-info/
+*.whl
+*.tar.gz
+
+# VS Code
+.vscode/
+# PyCharm
+.idea/
+
+# macOS
+.DS_Store
+# Windows
+Thumbs.db
+
+# Jupyter Notebook Cache
+.ipynb_checkpoints
+
+# Any log files generated during runs
+*.log
+logs/
+
+# Project-Specific Ignores
+# Ignore any plots saved in the experiments folder
+experiments/*.png

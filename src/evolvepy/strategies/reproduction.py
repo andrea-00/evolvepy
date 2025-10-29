@@ -1,0 +1,196 @@
+# src/evolvepy/strategies/reproduction.py
+
+import random
+from typing import Callable, List, Any, Union
+
+from ..individual import Individual, GenotypeType
+
+
+class StandardReproduction:
+    """
+    A standard "classic" reproduction strategy.
+    
+    This strategy orchestrates the creation of offspring by first
+    applying a recombination (crossover) strategy to the parents,
+    and then applying a mutation strategy to the resulting children.
+    
+    This is the most common reproduction model in Genetic Algorithms.
+    
+    """
+
+    def __init__(self, 
+                 recombination_strategy: Callable[..., List[Individual[GenotypeType]]],
+                 mutation_strategy: Callable[..., List[Individual[GenotypeType]]]
+                ):
+        """
+        Initializes the standard reproduction strategy.
+
+        Args:
+            recombination_strategy: A callable (e.g., an instance of
+                SinglePointCrossover) that takes a list of parents
+                and a generation number, returning a list of offspring.
+            mutation_strategy: A callable (e.g., an instance of
+                BitFlipMutation) that takes the list of offspring
+                and a generation number, returning the final,
+                mutated offspring.
+        """
+        self.recombine = recombination_strategy
+        self.mutate = mutation_strategy
+
+    def __call__(self, 
+                 parents: List[Individual[GenotypeType]], 
+                 current_generation: int) -> List[Individual[GenotypeType]]:
+        """
+        Executes the (Crossover + Mutation) sequence.
+
+        Args:
+            parents: The list of parent Individuals selected for reproduction.
+            current_generation: The current generation number, passed down
+                                to sub-strategies for parameter scheduling.
+
+        Returns:
+            A new list of offspring Individuals.
+        """
+        
+        # Apply crossover to create the base offspring
+        offspring = self.recombine(parents, current_generation=current_generation)
+        
+        # Apply mutation to the new offspring
+        offspring = self.mutate(offspring, current_generation=current_generation)
+        
+        return offspring
+
+
+class MutationOnlyReproduction:
+    """
+    A reproduction strategy that relies exclusively on mutation.
+    
+    This strategy bypasses crossover entirely. It first creates
+    direct clones of the parents and then applies a mutation
+    strategy to those clones.
+    
+    This model is common in Evolution Strategies (ES) and simple
+    stochastic hill-climbers.
+    """
+
+    def __init__(self, mutation_strategy: Callable[..., List[Individual[GenotypeType]]]):
+        """
+        Initializes the mutation-only reproduction strategy.
+
+        Args:
+            mutation_strategy: A callable (e.g., an instance of
+                GaussianMutation) that takes the list of offspring
+                and a generation number, returning the final,
+                mutated offspring.
+        """
+        self.mutate = mutation_strategy
+
+    def __call__(self, 
+                 parents: List[Individual[GenotypeType]], 
+                 current_generation: int) -> List[Individual[GenotypeType]]:
+        """
+        Executes the (Clone + Mutation) sequence.
+
+        Args:
+            parents: The list of parent Individuals selected for reproduction.
+            current_generation: The current generation number, passed down
+                                to the mutation strategy.
+
+        Returns:
+            A new list of mutated offspring (clones).
+        """
+        
+        # Create clones of the parents.
+        offspring = [Individual(p.genotype) for p in parents]
+
+        # Apply mutation to the clones
+        offspring = self.mutate(offspring, current_generation=current_generation)
+        
+        return offspring
+
+
+class ExclusiveReproduction:
+    """
+    A reproduction strategy that exclusively chooses between
+    recombination (crossover) OR mutation for each offspring.
+    
+    This strategy partitions the parent pool. A portion of the
+    offspring will be generated *only* by crossover (no subsequent
+    mutation), and the remaining portion will be generated *only*
+    by mutation (cloning a parent and mutating it).
+    """
+
+    def __init__(self, 
+                 recombination_strategy: Callable[..., List[Individual[GenotypeType]]],
+                 mutation_strategy: Callable[..., List[Individual[GenotypeType]]],
+                 mutation_only_prob: Union[float, Callable[[int], float]] = 0.2
+                ):
+        """
+        Initializes the exclusive choice reproduction strategy.
+
+        Args:
+            recombination_strategy: The callable to use for crossover.
+            mutation_strategy: The callable to use for mutation.
+            mutation_only_prob: The probability (0.0 to 1.0) that
+                an offspring will be generated by mutation-only.
+                (1.0 - this) is the probability of crossover-only.
+                
+                This can be a:
+                - float (constant probability for all generations)
+                - Callable (a scheduler fn(gen) -> float)
+        """
+        self.recombine = recombination_strategy
+        self.mutate = mutation_strategy
+        self.mut_prob_schedule = mutation_only_prob
+        
+        # Validation for the float case
+        if isinstance(mutation_only_prob, float) and not (0.0 <= mutation_only_prob <= 1.0):
+            raise ValueError("mutation_only_prob (float) must be between 0.0 and 1.0")
+
+    def __call__(self, 
+                 parents: List[Individual[GenotypeType]], 
+                 current_generation: int) -> List[Individual[GenotypeType]]:
+        """
+        Executes the (Crossover OR Mutation) sequence.
+
+        Args:
+            parents: The list of parent Individuals.
+            current_generation: The current generation number.
+
+        Returns:
+            A new list of offspring.
+        """
+        
+        # Resolve the probability for this generation
+        current_mut_prob: float
+        if callable(self.mut_prob_schedule):
+            current_mut_prob = self.mut_prob_schedule(current_generation)
+        else:
+            current_mut_prob = self.mut_prob_schedule
+        
+        final_offspring = []
+        
+        for i in range(0, len(parents), 2):
+            p1 = parents[i]
+            p2 = parents[i+1] if (i+1) < len(parents) else None
+            
+            if p2 is None:
+                # Handle odd number: must be mutation-only
+                clone = Individual(p1.genotype)
+                mutant = self.mutate([clone], current_generation)[0]
+                final_offspring.append(mutant)
+                continue
+                
+            # Make the choice using the *resolved* probability
+            if random.random() < current_mut_prob:
+                # Mutation-Only
+                clone1 = Individual(p1.genotype)
+                clone2 = Individual(p2.genotype)
+                mutants = self.mutate([clone1, clone2], current_generation)
+                final_offspring.extend(mutants)
+            else:
+                # Crossover-Only
+                recombined_pair = self.recombine([p1, p2], current_generation)
+                final_offspring.extend(recombined_pair)
+
+        return final_offspring[:len(parents)]

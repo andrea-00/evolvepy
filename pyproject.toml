@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "evolvepy"
+version = "0.1.0"
+requires-python = ">=3.10"
+description = "A flexible, strategy-based EA framework in Python."
+readme = "README.md"
+authors = [
+  { name = "Andrea Di Felice", email = "andrealav2901@gmail.com" }
+]
+
+dependencies = [
+    "numpy"
+]
+
+[project.optional-dependencies]
+analysis = [
+    "matplotlib",
+    "seaborn"
+]
+dev = [
+    "jupyter"
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
